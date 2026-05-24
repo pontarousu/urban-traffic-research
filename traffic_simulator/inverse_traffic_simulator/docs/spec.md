@@ -515,6 +515,20 @@ ObservationPoint(lat, lon) → matched_way_id + matched_position_ratio
 
 これは、断面交通量計測地点の位置情報およびそれに由来する派生データに再配布上の制限があるためです。
 
+開発時には `number_to_location.csv` という観測点コードと緯度・経度の対応表を参照していました。この `number` は交通量CSV内で観測地点を識別する観測点コードを表し、`location` はその観測地点の緯度・経度を表します。
+
+想定していた形式は、概念的には次のようなCSVです。
+
+| column | description |
+| --- | --- |
+| `source_code` | 情報源コード |
+| `point_number` | 観測地点を表す観測点コード |
+| `point_name` | 観測地点名 |
+| `lat` | 緯度 |
+| `lon` | 経度 |
+
+この対応表は断面交通量計測地点の詳細な位置情報に該当するため、利用規約上、承認前に第三者へ再配布できない可能性があります。そのため、CSV本体だけでなく、この対応表と交通量CSVを結合して生成した `realdata_all.json`、小規模抽出した `realdata_sample_small.json`、OSM道路網と対応付けた `data/current/*.json` も公開版から除外しています。
+
 公開版では、データそのものではなく、データ構造、変換処理、アルゴリズム、可視化の設計を示します。
 
 ## 15. 限界と今後の改善

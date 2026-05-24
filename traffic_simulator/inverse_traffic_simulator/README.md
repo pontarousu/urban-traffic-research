@@ -49,7 +49,7 @@ inverse_traffic_simulator/
 | パス例 | 内容 | 公開版での扱い |
 |---|---|---|
 | `data/TrafficVolume_Split_5min/TrafficVolume_YYYYMMDD_HHMM.csv` | 5分単位に分割された断面交通量CSV群 | 含めていません |
-| `data/number_to_location.csv` | 観測地点番号と緯度経度を対応付けるCSV | 含めていません |
+| `data/number_to_location.csv` | 観測地点を表す観測点コードと緯度経度を対応付けるCSV | 含めていません |
 | `data/realdata_all.json` | 交通量CSVと観測地点位置情報を統合した中間JSON | 含めていません |
 | `data/realdata_sample_small.json` | 小規模検証用に抽出したサンプルJSON | 含めていません |
 | `data/current/*.json` | OSM道路網、観測点、交通量を統合した実験用シナリオ | 含めていません |
@@ -61,7 +61,9 @@ inverse_traffic_simulator/
 
 `TrafficVolume_YYYYMMDD_HHMM.csv` は、時刻ごとの断面交通量を持つCSVを想定しています。スクリプト内では、地点を識別する列と、5分間の交通量を表す列を読み取ります。
 
-`number_to_location.csv` は、観測地点番号に対して緯度・経度を対応付けるCSVを想定しています。これにより、交通量データの地点番号を地理座標へ対応付けます。
+`number_to_location.csv` は、観測地点を表す観測点コードに対して緯度・経度を対応付けるCSVを想定しています。これにより、交通量データ内の観測点コードを地理座標へ対応付けます。
+
+このCSVは、断面交通量計測地点の詳細な位置情報に該当するため、公開版には含めていません。また、このCSVと交通量CSVを結合して生成したJSONも、位置情報に由来する派生データとして公開対象から除外しています。
 
 `realdata_all.json` は、上記の交通量CSVと位置情報CSVを統合した中間形式です。概念的には、次のような構造を持ちます。
 
