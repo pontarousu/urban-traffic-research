@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Conflict Volume Profiles</title>
+    <link rel="stylesheet" href="./conflict_volume_profiles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Conflict Volume Profiles</h1>
+        <p>direction_conflict の近接観測点ペアだけを表示</p>
+      </div>
+      <div class="actions">
+        <label>
+          scale
+          <select id="scaleMode">
+            <option value="pair" selected>pair</option>
+            <option value="global">global</option>
+            <option value="self">self</option>
+          </select>
+        </label>
+        <label>
+          sort
+          <select id="sortMode">
+            <option value="distance" selected>distance</option>
+            <option value="bias">bias gap</option>
+            <option value="volume">volume</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="summary" id="summary"></section>
+      <section class="pair-list" id="pairList"></section>
+    </main>
+
+    <template id="pairTemplate">
+      <article class="pair-row">
+        <div class="pair-meta"></div>
+        <div class="chart-panel left">
+          <div class="chart-title"></div>
+          <canvas width="360" height="130"></canvas>
+          <div class="chart-stats"></div>
+        </div>
+        <div class="chart-panel right">
+          <div class="chart-title"></div>
+          <canvas width="360" height="130"></canvas>
+          <div class="chart-stats"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./conflict_volume_profiles.js"></script>
+  </body>
+</html>

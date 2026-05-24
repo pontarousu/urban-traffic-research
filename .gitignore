@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Local/generated data
+traffic_simulator/**/data/
+traffic_simulator/**/results/
+traffic_simulator/**/output/
+traffic_simulator/**/shared_data/
+traffic_simulator/**/TrafficVolume_Split_5min/
+*.bak
+*.bak*
+
+# Large or restricted generated artifacts
+traffic_simulator/forward_traffic_ml/viewer/data/*.json

@@ -1,0 +1,263 @@
+:root {
+  --bg: #efece6;
+  --panel: rgba(255, 255, 255, 0.88);
+  --ink: #1c2427;
+  --muted: #657177;
+  --line: rgba(28, 36, 39, 0.1);
+  --accent: #c17034;
+  --accent-strong: #b5483d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 28%),
+    linear-gradient(135deg, #e7e2d8 0%, #f4f2ed 45%, #ebefee 100%);
+}
+
+.layout {
+  width: min(1400px, calc(100vw - 32px));
+  margin: 24px auto 40px;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.panel {
+  border-radius: 24px;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 36px rgba(28, 36, 39, 0.08);
+}
+
+.intro,
+.controls {
+  grid-column: 1;
+}
+
+.map-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 1.9rem;
+  line-height: 1.15;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+.lead {
+  margin-top: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.control-group + .control-group {
+  margin-top: 18px;
+}
+
+.stack {
+  display: grid;
+  gap: 8px;
+}
+
+.compact {
+  min-width: 90px;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.timeline-block {
+  margin-top: 18px;
+}
+
+.timeline-meta {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 800;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+}
+
+select,
+input[type="file"],
+input[type="range"] {
+  width: 100%;
+  font: inherit;
+}
+
+select,
+input[type="file"] {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+}
+
+input[type="range"] {
+  accent-color: var(--accent-strong);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.summary {
+  min-width: 260px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(28, 36, 39, 0.045);
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.7;
+}
+
+#scenario-description {
+  margin-top: 10px;
+}
+
+.map-stage {
+  position: relative;
+  width: 100%;
+  height: min(78vh, 860px);
+  min-height: 520px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #f8f8f6;
+}
+
+.map-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(28, 36, 39, 0.78);
+  color: #fff;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+}
+
+.badge.muted {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .intro,
+  .controls,
+  .map-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .map-header {
+    flex-direction: column;
+  }
+
+  .summary {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .layout {
+    width: min(100vw - 20px, 100%);
+    margin: 10px auto 24px;
+  }
+
+  .panel {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  h1 {
+    font-size: 1.56rem;
+  }
+
+  .map-stage {
+    min-height: 420px;
+    height: 62vh;
+  }
+}

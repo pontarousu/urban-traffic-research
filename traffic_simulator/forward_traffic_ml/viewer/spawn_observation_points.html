@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spawn Observation Points</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Spawn / Observation</h1>
+        <div class="controls">
+          <label><input type="checkbox" id="toggleRoads" checked> 道路</label>
+          <label><input type="checkbox" id="toggleObservations" checked> 観測点</label>
+          <label><input type="checkbox" id="toggleSpawns" checked> 発生車両</label>
+          <label><input type="checkbox" id="toggleOnlyHitSpawns"> 観測点通過車のみ</label>
+          <label><input type="checkbox" id="toggleLabels"> ラベル</label>
+        </div>
+        <div class="view-actions">
+          <button type="button" id="resetView">Reset view</button>
+          <span id="zoomReadout">1.00x</span>
+        </div>
+        <div class="legend">
+          <div><span class="chip internal-major"></span>観測点</div>
+          <div><span class="chip internal-minor"></span>発生車両</div>
+          <div><span class="chip boundary-major"></span>観測点通過あり</div>
+        </div>
+        <pre id="summary"></pre>
+      </aside>
+      <main class="map-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+    </div>
+    <script src="./spawn_observation_points.js"></script>
+  </body>
+</html>

@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1d252c;
+  background: #f5f7f8;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+}
+
+.panel {
+  border-right: 1px solid #d5dde3;
+  background: #ffffff;
+  padding: 16px;
+  overflow: auto;
+}
+
+h1 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.controls label {
+  font-size: 14px;
+}
+
+.view-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.view-actions button {
+  border: 1px solid #c7d0d7;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d252c;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.view-actions button:hover {
+  background: #f1f5f8;
+}
+
+.view-actions span {
+  color: #5c6770;
+  font-size: 13px;
+}
+
+.legend {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.chip {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.boundary-major { background: #d9480f; }
+.boundary-minor { background: #f08c00; }
+.internal-major { background: #1971c2; }
+.internal-minor { background: #5c940d; }
+.under { background: #e03131; }
+.over { background: #1864ab; }
+.profile-morning { background: #6741d9; }
+.profile-evening { background: #0b7285; }
+
+pre {
+  margin: 0;
+  padding: 12px;
+  background: #f1f3f5;
+  border: 1px solid #dfe5e8;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.map-wrap {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+#mapCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #f8fafb;
+  cursor: grab;
+}
+
+#mapCanvas.dragging {
+  cursor: grabbing;
+}
+
+.tooltip {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  max-width: 320px;
+  padding: 8px 10px;
+  border: 1px solid #c7d0d7;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(21, 31, 40, 0.14);
+  font-size: 12px;
+  line-height: 1.45;
+}

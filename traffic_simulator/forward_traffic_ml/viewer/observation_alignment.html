@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Observation Alignment</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Observation Alignment</h1>
+        <div class="controls">
+          <label><input type="checkbox" id="toggleRoads" checked> 道路</label>
+          <label><input type="checkbox" id="toggleObservations" checked> 観測点</label>
+          <label><input type="checkbox" id="toggleConnectors" checked> 最近傍補助線</label>
+          <label><input type="checkbox" id="toggleLinkedEdges" checked> 暫定リンク先</label>
+          <label><input type="checkbox" id="toggleDirectionArrows" checked> 進行方向</label>
+          <label><input type="checkbox" id="toggleNearPairs" checked> 近接ペア</label>
+          <label><input type="checkbox" id="toggleOnlyPairConflicts"> conflictのみ</label>
+          <label><input type="checkbox" id="toggleVolumeProfile" checked> 時間変化</label>
+          <label><input type="checkbox" id="toggleExcludedObservations"> 除外点も表示</label>
+          <label><input type="checkbox" id="toggleLabels"> ラベル</label>
+          <label><input type="checkbox" id="toggleOldMatches"> 旧OSM対応ID</label>
+        </div>
+        <div class="view-actions">
+          <button type="button" id="resetView">Reset view</button>
+          <span id="zoomReadout">1.00x</span>
+        </div>
+        <div class="legend">
+          <div><span class="chip over"></span>10m以内</div>
+          <div><span class="chip boundary-minor"></span>10-30m</div>
+          <div><span class="chip under"></span>30m超</div>
+          <div><span class="chip internal-major"></span>暫定リンク先</div>
+          <div><span class="chip boundary-major"></span>方向conflict</div>
+          <div><span class="chip profile-morning"></span>午前寄り</div>
+          <div><span class="chip profile-evening"></span>夕方寄り</div>
+        </div>
+        <pre id="summary"></pre>
+      </aside>
+      <main class="map-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+    </div>
+    <script src="./observation_alignment.js"></script>
+  </body>
+</html>

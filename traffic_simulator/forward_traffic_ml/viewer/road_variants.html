@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Road Filter Variants</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Road Variants</h1>
+        <div class="controls">
+          <label for="variantSelect">道路選択</label>
+          <select id="variantSelect"></select>
+          <label><input type="checkbox" id="toggleObservations" checked> 観測点</label>
+          <label><input type="checkbox" id="toggleRoadColors" checked> road_type 色分け</label>
+        </div>
+        <div class="legend">
+          <div><span class="chip" style="background:#7b2cbf"></span>motorway/trunk</div>
+          <div><span class="chip" style="background:#1971c2"></span>primary</div>
+          <div><span class="chip" style="background:#2b8a3e"></span>secondary</div>
+          <div><span class="chip" style="background:#f08c00"></span>tertiary</div>
+          <div><span class="chip" style="background:#868e96"></span>other</div>
+        </div>
+        <pre id="summary"></pre>
+      </aside>
+      <main class="map-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+    </div>
+    <script src="./road_variants.js"></script>
+  </body>
+</html>

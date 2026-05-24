@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>東京交通プレイバック</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel intro">
+        <p class="eyebrow">Traffic Playback Viewer</p>
+        <h1>車両の動きを本実装ログから再生する</h1>
+        <p class="lead">
+          Node 側で `sim_core.mjs` を使って事前計算した playback JSON を読み込み、
+          東京の道路網上で車両マーカーが流れる様子をブラウザで確認します。
+        </p>
+      </section>
+
+      <section class="panel controls">
+        <div class="control-group">
+          <label class="stack" for="sample-select">
+            <span>サンプル</span>
+            <select id="sample-select"></select>
+          </label>
+          <button id="load-sample" type="button">サンプル読込</button>
+        </div>
+
+        <div class="control-group">
+          <label class="stack" for="playback-file">
+            <span>playback JSON</span>
+            <input id="playback-file" type="file" accept=".json,application/json" />
+          </label>
+          <label class="stack" for="scenario-file">
+            <span>scenario JSON</span>
+            <input id="scenario-file" type="file" accept=".json,application/json" />
+          </label>
+        </div>
+
+        <div class="control-group inline-controls">
+          <button id="play-toggle" type="button">再生</button>
+          <button id="restart-playback" type="button">先頭へ戻る</button>
+
+          <label class="stack compact" for="speed-select">
+            <span>再生速度</span>
+            <select id="speed-select">
+              <option value="30">30x</option>
+              <option value="60" selected>60x</option>
+              <option value="120">120x</option>
+              <option value="240">240x</option>
+              <option value="480">480x</option>
+              <option value="720">720x</option>
+              <option value="1440">1440x</option>
+            </select>
+          </label>
+
+          <label class="toggle">
+            <input id="show-observations" type="checkbox" checked />
+            <span>観測点を表示</span>
+          </label>
+        </div>
+
+        <div class="timeline-block">
+          <label class="stack" for="timeline">
+            <span>時刻</span>
+            <input id="timeline" type="range" min="0" max="0" step="0.0001" value="0" />
+          </label>
+          <div class="timeline-meta">
+            <span id="timeline-current">--:--:--</span>
+            <span id="timeline-end">--:--:--</span>
+          </div>
+        </div>
+
+        <p id="scenario-status" class="small">
+          サンプルを読み込むか、playback JSON と scenario JSON を選択してください。
+        </p>
+      </section>
+
+      <section class="panel map-panel">
+        <div class="map-header">
+          <div>
+            <p class="eyebrow">Map Playback</p>
+            <h2 id="scenario-title">シナリオを読み込み中...</h2>
+            <p id="scenario-description" class="small"></p>
+          </div>
+          <div id="summary" class="summary"></div>
+        </div>
+
+        <div id="map-stage" class="map-stage" aria-label="交通プレイバック地図">
+          <canvas id="roads-canvas"></canvas>
+          <canvas id="cars-canvas"></canvas>
+          <div class="map-overlay">
+            <div id="playback-badge" class="badge">未読込</div>
+            <div id="frame-stats" class="badge muted">active cars: 0</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

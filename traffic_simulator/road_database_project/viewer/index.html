@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>道路 DB 試作ビューア</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <header class="sidebar-header">
+          <p class="eyebrow">road database prototype</p>
+          <h1>道路レイヤー比較</h1>
+        </header>
+
+        <section class="control-group">
+          <label for="dataset-select">対象データ</label>
+          <select id="dataset-select">
+            <option value="tokyo_core_small">Tokyo core small</option>
+            <option value="tokyo_station">Tokyo station</option>
+          </select>
+        </section>
+
+        <section class="control-group">
+          <span class="group-label">表示</span>
+          <div class="mode-grid" id="mode-grid">
+            <button data-mode="osm" class="active">OSM</button>
+            <button data-mode="geometry">Geometry</button>
+            <button data-mode="topology">Topology</button>
+            <button data-mode="overlay">Overlay</button>
+            <button data-mode="directed">Directed</button>
+            <button data-mode="intersections">Intersections</button>
+            <button data-mode="direction_changes">Direction changes</button>
+            <button data-mode="approaches">Approaches</button>
+            <button data-mode="restrictions">Restrictions</button>
+            <button data-mode="analysis">Analysis</button>
+            <button data-mode="components">Components</button>
+          </div>
+        </section>
+
+        <section class="control-group checkbox-group">
+          <label>
+            <input id="show-shortest" type="checkbox" checked />
+            最短 edge を強調
+          </label>
+          <label>
+            <input id="show-longest" type="checkbox" checked />
+            最長 edge を強調
+          </label>
+        </section>
+
+        <section class="stats-panel">
+          <h2>要約</h2>
+          <dl id="summary-stats"></dl>
+        </section>
+
+        <section class="stats-panel">
+          <h2>凡例</h2>
+          <ul id="legend"></ul>
+        </section>
+      </aside>
+
+      <section class="viewer-panel">
+        <div class="toolbar">
+          <button id="fit-view" title="全体表示">全体表示</button>
+          <span id="status-text">読み込み待ち</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="map-canvas"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
