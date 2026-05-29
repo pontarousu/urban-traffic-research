@@ -24,6 +24,10 @@ function option(id) {
   return document.getElementById(id).checked;
 }
 
+function selectedFilter() {
+  return document.getElementById("filterSelect").value;
+}
+
 function resize() {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -45,17 +49,6 @@ function project(lat, lon) {
   };
 }
 
-function jitteredPoint(point) {
-  const p = project(point.lat, point.lon);
-  const angle = (point.vehicle_id * 137.508) * Math.PI / 180;
-  const ring = Math.sqrt((point.edge_spawn_index - 1) % 24);
-  const radius = Math.min(14, 2.2 + ring * 2.2);
-  return {
-    x: p.x + Math.cos(angle) * radius,
-    y: p.y + Math.sin(angle) * radius,
-  };
-}
-
 function drawRoads() {
   state.data.roads.forEach((road) => {
     if (!road.shape_points.length) return;
@@ -65,76 +58,73 @@ function drawRoads() {
       if (index === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
     });
-    ctx.lineWidth = road.road_type === "motorway" || road.road_type === "trunk" ? 1.2 : 0.65;
-    ctx.strokeStyle = road.road_type === "motorway" ? "rgba(91, 116, 139, 0.42)" : "rgba(91, 116, 139, 0.24)";
+    const major = ["motorway", "trunk", "primary", "secondary"].includes(road.road_type);
+    ctx.lineWidth = major ? 1.05 : 0.55;
+    ctx.strokeStyle = major ? "rgba(70, 91, 109, 0.34)" : "rgba(91, 116, 139, 0.18)";
     ctx.stroke();
   });
 }
 
-function visibleSpawns() {
-  if (!option("toggleOnlyHitSpawns")) return state.data.spawn_points;
-  return state.data.spawn_points.filter((point) => point.observation_trace_count > 0);
-}
-
-function drawSpawns() {
-  visibleSpawns().forEach((point) => {
-    const p = jitteredPoint(point);
-    const hasHit = point.observation_trace_count > 0;
-    const radius = hasHit ? 3.3 : 2.5;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = hasHit ? "rgba(217, 72, 15, 0.82)" : "rgba(92, 148, 13, 0.62)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    state.hoverItems.push({
-      x: p.x,
-      y: p.y,
-      r: radius + 4,
-      text:
-        `発生車両\nvehicle: ${point.vehicle_id}\n` +
-        `source_edge: ${point.source_edge_id}\n` +
-        `mesh: ${point.source_mesh_id || "-"}\n` +
-        `pos: ${point.source_position_meter ?? "-"}m\n` +
-        `edge_spawn: ${point.edge_spawn_index}/${point.edge_spawn_count}\n` +
-        `road: ${point.road_type || "-"} lane: ${point.lane_count_total ?? "-"} speed: ${point.speed_limit_kmh ?? "-"}\n` +
-        `obs_trace: ${point.observation_trace_count}\n` +
-        `branch_trace: ${point.branch_trace_count}\n` +
-        `final: ${point.final_status}`,
-    });
+function visibleObservations() {
+  const filter = selectedFilter();
+  return state.data.observations.filter((obs) => {
+    if (filter === "under") return obs.error_rate < 0;
+    if (filter === "over") return obs.error_rate > 0;
+    if (filter === "large") return Math.abs(obs.error_rate) >= 0.5;
+    return true;
   });
 }
 
 function drawObservations() {
-  const maxObserved = Math.max(1, ...state.data.observations.map((obs) => obs.observed_total || 0));
-  state.data.observations.forEach((obs) => {
-    const p = project(obs.lat, obs.lon);
-    const radius = 3 + Math.sqrt((obs.observed_total || 0) / maxObserved) * 4;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = obs.has_direction_conflict_pair ? "rgba(217, 72, 15, 0.72)" : "rgba(25, 113, 194, 0.72)";
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-    if (option("toggleLabels")) {
-      ctx.font = "11px system-ui, sans-serif";
-      ctx.fillStyle = "#1d252c";
-      ctx.fillText(obs.point_number || obs.observation_id, p.x + radius + 3, p.y - radius - 1);
-    }
-    state.hoverItems.push({
-      x: p.x,
-      y: p.y,
-      r: radius + 4,
-      text:
-        `観測点\n${obs.point_name || obs.observation_id}\n` +
-        `番号: ${obs.point_number || "-"}\n` +
-        `matched_edge: ${obs.directed_edge_id || "-"}\n` +
-        `method: ${obs.match_method || "-"} confidence: ${obs.match_confidence || "-"}\n` +
-        `observed_total: ${obs.observed_total}`,
+  const observations = visibleObservations();
+  observations
+    .slice()
+    .sort((a, b) => Math.abs(a.error_rate) - Math.abs(b.error_rate))
+    .forEach((obs) => {
+      const p = project(obs.lat, obs.lon);
+      const magnitude = Math.min(1.4, Math.abs(obs.error_rate));
+      const radius = 3.2 + Math.sqrt(magnitude) * 7;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius + 3, 0, Math.PI * 2);
+      ctx.fillStyle = colorFor(obs.error_rate, 0.16);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = colorFor(obs.error_rate, 0.82);
+      ctx.fill();
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.88)";
+      ctx.stroke();
+
+      if (option("toggleLabels") && Math.abs(obs.error_rate) >= 0.5) {
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillStyle = "#1d252c";
+        ctx.fillText(obs.point_number || obs.observation_id, p.x + radius + 4, p.y - radius - 1);
+      }
+
+      state.hoverItems.push({
+        x: p.x,
+        y: p.y,
+        r: radius + 5,
+        text:
+          `${obs.point_name || obs.observation_id}\n` +
+          `番号: ${obs.point_number || "-"}\n` +
+          `error_rate: ${(obs.error_rate * 100).toFixed(1)}%\n` +
+          `ratio: ${(obs.ratio * 100).toFixed(1)}%\n` +
+          `observed: ${obs.observed_total}\n` +
+          `simulated: ${obs.simulated_total}\n` +
+          `error: ${obs.error_total}\n` +
+          `bins: ${obs.bin_count}\n` +
+          `edge: ${obs.directed_edge_id || "-"}\n` +
+          `match: ${obs.match_confidence || "-"}`,
+      });
     });
-  });
+}
+
+function colorFor(errorRate, alpha) {
+  if (errorRate < -0.1) return `rgba(25, 113, 194, ${alpha})`;
+  if (errorRate > 0.1) return `rgba(224, 49, 49, ${alpha})`;
+  return `rgba(240, 140, 0, ${alpha})`;
 }
 
 function draw() {
@@ -143,24 +133,35 @@ function draw() {
   ctx.clearRect(0, 0, rect.width, rect.height);
   state.hoverItems = [];
   if (option("toggleRoads")) drawRoads();
-  if (option("toggleSpawns")) drawSpawns();
-  if (option("toggleObservations")) drawObservations();
+  if (option("togglePoints")) drawObservations();
+  updateSummary();
 }
 
 function updateSummary() {
-  const summary = state.data.summary;
-  const categories = summary.source_category_counts || {};
-  const statuses = summary.final_status_counts || {};
+  const s = state.data.summary;
+  const observations = visibleObservations();
+  const under = observations.filter((obs) => obs.error_rate < 0);
+  const over = observations.filter((obs) => obs.error_rate > 0);
+  const worstUnder = [...state.data.observations]
+    .sort((a, b) => a.error_rate - b.error_rate)
+    .slice(0, 8)
+    .map((obs) => `${obs.point_number || "-"} ${obs.point_name || ""} ${(obs.error_rate * 100).toFixed(1)}%`)
+    .join("\n");
+  const worstOver = [...state.data.observations]
+    .sort((a, b) => b.error_rate - a.error_rate)
+    .slice(0, 8)
+    .map((obs) => `${obs.point_number || "-"} ${obs.point_name || ""} +${(obs.error_rate * 100).toFixed(1)}%`)
+    .join("\n");
   summaryEl.textContent =
-    `observations: ${summary.observation_count}\n` +
-    `spawn vehicles: ${summary.spawn_vehicle_count}\n` +
-    `spawn edges: ${summary.spawn_edge_count}\n` +
-    `spawn meshes: ${summary.spawn_mesh_count || 0}\n` +
-    `vehicles with obs trace: ${summary.vehicles_with_observation_trace}\n\n` +
-    `source categories\n` +
-    Object.entries(categories).map(([key, value]) => `${key}: ${value}`).join("\n") +
-    `\n\nfinal status\n` +
-    Object.entries(statuses).map(([key, value]) => `${key}: ${value}`).join("\n");
+    `time_min >= ${s.start_min}\n` +
+    `observations: ${s.observation_count}\n` +
+    `ratio: ${(s.simulated_total_ratio * 100).toFixed(1)}%\n` +
+    `under/over: ${s.under_observation_count}/${s.over_observation_count}\n` +
+    `visible under/over: ${under.length}/${over.length}\n` +
+    `mean error_rate: ${(s.error_rate_mean * 100).toFixed(1)}%\n` +
+    `min/max: ${(s.error_rate_min * 100).toFixed(1)}% / ${(s.error_rate_max * 100).toFixed(1)}%\n\n` +
+    `worst under\n${worstUnder}\n\n` +
+    `worst over\n${worstOver}`;
 }
 
 function updateZoomReadout() {
@@ -228,22 +229,23 @@ canvas.addEventListener("wheel", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
-  const factor = event.deltaY < 0 ? 1.18 : 0.84;
+  const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15;
   zoomAt(x, y, state.view.scale * factor);
 }, { passive: false });
 
 document.getElementById("resetView").addEventListener("click", resetView);
-["toggleRoads", "toggleObservations", "toggleSpawns", "toggleOnlyHitSpawns", "toggleLabels"].forEach((id) => {
+document.getElementById("filterSelect").addEventListener("change", draw);
+["toggleRoads", "togglePoints", "toggleLabels"].forEach((id) => {
   document.getElementById(id).addEventListener("change", draw);
 });
 
 window.addEventListener("resize", resize);
 
-fetch("./data/spawn_observation_points.json")
+fetch("./data/observation_error_map.json")
   .then((response) => response.json())
   .then((data) => {
     state.data = data;
-    updateSummary();
+    updateZoomReadout();
     resize();
   })
   .catch((error) => {

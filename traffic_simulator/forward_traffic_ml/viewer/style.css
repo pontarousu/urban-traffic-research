@@ -88,6 +88,7 @@ h1 {
 .over { background: #1864ab; }
 .profile-morning { background: #6741d9; }
 .profile-evening { background: #0b7285; }
+.observation-radius { background: rgba(25, 113, 194, 0.22); border: 1px solid rgba(25, 113, 194, 0.52); }
 
 pre {
   margin: 0;

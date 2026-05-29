@@ -14,7 +14,7 @@ from typing import Any, Callable
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
 
-DEFAULT_SCENARIO_PATH = REPO_ROOT / "inverse_traffic_simulator/data/current/tokyo_core_small_realdata_osm_300obs_allday.json"
+DEFAULT_SCENARIO_PATH = REPO_ROOT / "private_inputs/scenario.json"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "viewer/data/road_variants.json"
 
 

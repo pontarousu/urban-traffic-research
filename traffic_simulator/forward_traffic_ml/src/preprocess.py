@@ -15,9 +15,9 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
 
-DEFAULT_SCENARIO_PATH = REPO_ROOT / "inverse_traffic_simulator/data/current/tokyo_core_small_realdata_osm_300obs_allday.json"
-DEFAULT_TRAFFIC_PATH = REPO_ROOT / "inverse_traffic_simulator/shared_data/traffic_volume_reusable/realdata_all.json"
-DEFAULT_LOCATION_PATH = REPO_ROOT / "inverse_traffic_simulator/shared_data/traffic_volume_reusable/number_to_location.csv"
+DEFAULT_SCENARIO_PATH = REPO_ROOT / "private_inputs/scenario.json"
+DEFAULT_TRAFFIC_PATH = REPO_ROOT / "private_inputs/traffic_volume.json"
+DEFAULT_LOCATION_PATH = REPO_ROOT / "private_inputs/observation_locations.csv"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data/processed/small_forward_dataset.json"
 
 

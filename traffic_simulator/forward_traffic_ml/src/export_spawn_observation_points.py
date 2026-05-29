@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -119,12 +120,18 @@ def build_spawn_points(
             continue
         edge = edges_by_id.get(edge_id, {})
         edge_seen_count[edge_id] += 1
-        source_point = shape_points[0]
+        source_point = point_at_position(
+            shape_points,
+            float(edge.get("length_meter") or 1.0),
+            float(trace.get("source_position_meter") or 0.0),
+        )
         spawn_points.append(
             {
                 "vehicle_id": trace["vehicle_id"],
                 "source_edge_id": edge_id,
                 "source_category": trace.get("source_category"),
+                "source_mesh_id": trace.get("source_mesh_id"),
+                "source_position_meter": trace.get("source_position_meter"),
                 "lat": source_point["lat"],
                 "lon": source_point["lon"],
                 "edge_spawn_index": edge_seen_count[edge_id],
@@ -144,17 +151,59 @@ def build_spawn_points(
     return spawn_points
 
 
+def point_at_position(
+    shape_points: list[dict[str, float]],
+    edge_length_meter: float,
+    position_meter: float,
+) -> dict[str, float]:
+    """edge上の距離から表示用の緯度経度を概算する。"""
+
+    if len(shape_points) <= 1:
+        return shape_points[0]
+    ratio = min(1.0, max(0.0, position_meter / max(1.0, edge_length_meter)))
+    segments = []
+    total = 0.0
+    for index in range(len(shape_points) - 1):
+        start = shape_points[index]
+        end = shape_points[index + 1]
+        length = math_hypot_lat_lon(start, end)
+        segments.append((start, end, length))
+        total += length
+    target = total * ratio
+    current = 0.0
+    for start, end, length in segments:
+        if current + length >= target:
+            local_ratio = (target - current) / max(length, 1e-12)
+            return {
+                "lat": start["lat"] + (end["lat"] - start["lat"]) * local_ratio,
+                "lon": start["lon"] + (end["lon"] - start["lon"]) * local_ratio,
+            }
+        current += length
+    return shape_points[-1]
+
+
+def math_hypot_lat_lon(start: dict[str, float], end: dict[str, float]) -> float:
+    """表示用の簡易距離を返す。"""
+
+    lat_scale = 111_320.0
+    lon_scale = 111_320.0
+    return math.hypot((end["lat"] - start["lat"]) * lat_scale, (end["lon"] - start["lon"]) * lon_scale)
+
+
 def summarize(observations: list[dict[str, Any]], spawn_points: list[dict[str, Any]]) -> dict[str, Any]:
     """表示用サマリを作る。"""
 
     source_category_counts = Counter(point["source_category"] for point in spawn_points)
+    source_mesh_counts = Counter(point["source_mesh_id"] for point in spawn_points if point.get("source_mesh_id"))
     final_status_counts = Counter(point["final_status"] for point in spawn_points)
     return {
         "observation_count": len(observations),
         "spawn_vehicle_count": len(spawn_points),
         "spawn_edge_count": len(set(point["source_edge_id"] for point in spawn_points)),
+        "spawn_mesh_count": len(source_mesh_counts),
         "vehicles_with_observation_trace": sum(1 for point in spawn_points if point["observation_trace_count"] > 0),
         "source_category_counts": dict(source_category_counts),
+        "top_spawn_meshes": source_mesh_counts.most_common(20),
         "final_status_counts": dict(final_status_counts),
     }
 

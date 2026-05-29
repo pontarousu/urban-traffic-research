@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Observation Error Pair Map</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Error Pair Map</h1>
+        <div class="controls">
+          <label><input type="checkbox" id="toggleRoads" checked> 道路</label>
+          <label><input type="checkbox" id="togglePairs" checked> 逆符号ペア</label>
+          <label><input type="checkbox" id="togglePoints" checked> 観測点</label>
+          <label><input type="checkbox" id="toggleLabels"> 上位ラベル</label>
+          <label>
+            表示ペア数
+            <select id="pairLimitSelect">
+              <option value="30">30</option>
+              <option value="80" selected>80</option>
+              <option value="200">200</option>
+            </select>
+          </label>
+        </div>
+        <div class="view-actions">
+          <button type="button" id="resetView">Reset view</button>
+          <span id="zoomReadout">1.00x</span>
+        </div>
+        <div class="legend">
+          <div><span class="chip internal-major"></span>過小</div>
+          <div><span class="chip under"></span>過大</div>
+          <div><span class="chip boundary-minor"></span>逆符号ペア</div>
+        </div>
+        <pre id="summary"></pre>
+      </aside>
+      <main class="map-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+    </div>
+    <script src="./observation_error_pair_map.js"></script>
+  </body>
+</html>

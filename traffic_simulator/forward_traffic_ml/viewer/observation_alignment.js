@@ -35,6 +35,8 @@ const profileStyle = {
   low_volume_or_missing: "rgba(134, 142, 150, 0.62)",
 };
 
+const observationRadiusMeter = 1000;
+
 function resize() {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -83,6 +85,57 @@ function drawRoads() {
     ctx.strokeStyle = road.road_type === "motorway" ? "rgba(91, 116, 139, 0.45)" : "rgba(91, 116, 139, 0.28)";
     ctx.stroke();
   });
+}
+
+function drawObservationRadiusCircles() {
+  const observations = visibleObservations();
+  observations.forEach((obs) => {
+    const circlePoints = circleLatLonPoints(obs.lat, obs.lon, observationRadiusMeter, 96);
+    ctx.beginPath();
+    circlePoints.forEach((point, index) => {
+      const p = project(point.lat, point.lon);
+      if (index === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = "rgba(25, 113, 194, 0.055)";
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.65, 1.1 / Math.sqrt(state.view.scale));
+    ctx.strokeStyle = "rgba(25, 113, 194, 0.22)";
+    ctx.stroke();
+  });
+}
+
+function circleLatLonPoints(centerLat, centerLon, radiusMeter, stepCount) {
+  const earthRadiusMeter = 6371008.8;
+  const latRad = toRadians(centerLat);
+  const lonRad = toRadians(centerLon);
+  const angularDistance = radiusMeter / earthRadiusMeter;
+  const points = [];
+  for (let index = 0; index < stepCount; index += 1) {
+    const bearing = (Math.PI * 2 * index) / stepCount;
+    const pointLatRad = Math.asin(
+      Math.sin(latRad) * Math.cos(angularDistance) +
+        Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(bearing),
+    );
+    const pointLonRad = lonRad + Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latRad),
+      Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(pointLatRad),
+    );
+    points.push({
+      lat: toDegrees(pointLatRad),
+      lon: toDegrees(pointLonRad),
+    });
+  }
+  return points;
+}
+
+function toRadians(degrees) {
+  return degrees * Math.PI / 180;
+}
+
+function toDegrees(radians) {
+  return radians * 180 / Math.PI;
 }
 
 function drawConnectors() {
@@ -314,6 +367,7 @@ function draw() {
   ctx.clearRect(0, 0, rect.width, rect.height);
   state.hoverItems = [];
   if (option("toggleRoads")) drawRoads();
+  if (option("toggleObservationRadius")) drawObservationRadiusCircles();
   if (option("toggleLinkedEdges")) drawLinkedEdges();
   if (option("toggleConnectors")) drawConnectors();
   if (option("toggleNearPairs")) drawNearPairs();
@@ -432,7 +486,7 @@ window.addEventListener("mouseup", () => {
   canvas.classList.remove("dragging");
 });
 
-["toggleRoads", "toggleObservations", "toggleConnectors", "toggleLinkedEdges", "toggleDirectionArrows", "toggleNearPairs", "toggleOnlyPairConflicts", "toggleVolumeProfile", "toggleExcludedObservations", "toggleLabels", "toggleOldMatches"].forEach((id) => {
+["toggleRoads", "toggleObservations", "toggleConnectors", "toggleLinkedEdges", "toggleDirectionArrows", "toggleNearPairs", "toggleObservationRadius", "toggleOnlyPairConflicts", "toggleVolumeProfile", "toggleExcludedObservations", "toggleLabels", "toggleOldMatches"].forEach((id) => {
   document.getElementById(id).addEventListener("change", draw);
 });
 

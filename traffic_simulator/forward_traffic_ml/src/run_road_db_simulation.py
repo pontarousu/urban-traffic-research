@@ -41,10 +41,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-vehicle-age-sec", type=int, default=1800)
     parser.add_argument("--epsilon", type=float, default=0.2)
     parser.add_argument("--spawn-timing", choices=["batch", "distributed"], default="distributed")
-    parser.add_argument("--source-mode", choices=["major", "matched_edges", "mixed", "observation_upstream"], default="mixed")
+    parser.add_argument("--vehicle-packet-size", type=int, default=1)
+    parser.add_argument("--source-mode", choices=["major", "matched_edges", "mixed", "observation_upstream", "mesh_uniform"], default="mixed")
     parser.add_argument("--upstream-min-distance-meter", type=float, default=80.0)
     parser.add_argument("--upstream-max-distance-meter", type=float, default=450.0)
     parser.add_argument("--upstream-max-candidates-per-observation", type=int, default=12)
+    parser.add_argument("--mesh-size-meter", type=float, default=500.0)
     parser.add_argument("--include-low-confidence", action="store_true")
     return parser.parse_args()
 
@@ -136,6 +138,7 @@ def main() -> None:
         upstream_min_distance_meter=args.upstream_min_distance_meter,
         upstream_max_distance_meter=args.upstream_max_distance_meter,
         upstream_max_candidates_per_observation=args.upstream_max_candidates_per_observation,
+        mesh_size_meter=args.mesh_size_meter,
     )
     result = run_road_db_simulation(
         network=network,
@@ -151,6 +154,7 @@ def main() -> None:
         max_vehicle_age_sec=args.max_vehicle_age_sec,
         epsilon=args.epsilon,
         spawn_timing=args.spawn_timing,
+        vehicle_packet_size=args.vehicle_packet_size,
     )
 
     counts_path = args.output_dir / "simulation_counts.csv"
@@ -170,9 +174,11 @@ def main() -> None:
         "observation_alignment": str(args.observation_alignment),
         "source_mode": args.source_mode,
         "spawn_timing": args.spawn_timing,
+        "vehicle_packet_size": args.vehicle_packet_size,
         "upstream_min_distance_meter": args.upstream_min_distance_meter,
         "upstream_max_distance_meter": args.upstream_max_distance_meter,
         "upstream_max_candidates_per_observation": args.upstream_max_candidates_per_observation,
+        "mesh_size_meter": args.mesh_size_meter,
         "observation_count": len(observations),
         "source_candidate_count": len(source_candidates),
         "counts_csv": str(counts_path),

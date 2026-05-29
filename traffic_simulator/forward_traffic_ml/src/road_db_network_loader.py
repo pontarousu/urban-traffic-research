@@ -42,6 +42,23 @@ ROAD_TYPE_WEIGHTS = {
     "tertiary_link": 1.2,
 }
 
+MESH_SOURCE_ROAD_TYPE_WEIGHTS = {
+    "motorway": 5.5,
+    "trunk": 5.0,
+    "primary": 5.0,
+    "secondary": 4.0,
+    "tertiary": 3.0,
+    "motorway_link": 2.2,
+    "trunk_link": 2.0,
+    "primary_link": 1.8,
+    "secondary_link": 1.5,
+    "tertiary_link": 1.2,
+    "unclassified": 1.5,
+    "residential": 0.4,
+    "living_street": 0.2,
+    "service": 0.1,
+}
+
 
 @dataclass(frozen=True)
 class ObservationMatch:
@@ -237,6 +254,7 @@ def build_source_candidates(
     upstream_min_distance_meter: float = 80.0,
     upstream_max_distance_meter: float = 450.0,
     upstream_max_candidates_per_observation: int = 12,
+    mesh_size_meter: float = 500.0,
 ) -> list[dict[str, Any]]:
     """車両発生候補 edge を作る。"""
 
@@ -250,6 +268,7 @@ def build_source_candidates(
                 "directed_edge_id": edge_id,
                 "weight": max(1.0, total),
                 "source_category": "matched_edge_debug",
+                "length_meter": network.edge_length(edge_id),
             }
             for edge_id, total in observed_totals.items()
             if edge_id in network.directed_edges and network.outgoing_options(edge_id)
@@ -272,6 +291,7 @@ def build_source_candidates(
                 "directed_edge_id": edge_id,
                 "weight": weight,
                 "source_category": "major_rule",
+                "length_meter": length,
             }
         )
 
@@ -286,6 +306,12 @@ def build_source_candidates(
             upstream_max_distance_meter=upstream_max_distance_meter,
             max_candidates_per_observation=upstream_max_candidates_per_observation,
         )
+    if source_mode == "mesh_uniform":
+        return build_mesh_uniform_source_candidates(
+            network=network,
+            min_length_meter=min_length_meter,
+            mesh_size_meter=mesh_size_meter,
+        )
     if source_mode != "mixed":
         raise ValueError(f"未知の source_mode です: {source_mode}")
 
@@ -294,6 +320,96 @@ def build_source_candidates(
         item["weight"] *= 0.15
         item["source_category"] = "matched_edge_debug_mixed"
     return major_candidates + matched_candidates
+
+
+def build_mesh_uniform_source_candidates(
+    *,
+    network: RoadDbNetwork,
+    min_length_meter: float,
+    mesh_size_meter: float,
+) -> list[dict[str, Any]]:
+    """メッシュごとの総重みが一様になる発生候補を作る。"""
+
+    mesh_size = max(50.0, mesh_size_meter)
+    origin_lat = sum(float(node["lat"]) for node in network.nodes.values()) / max(1, len(network.nodes))
+    raw_by_mesh: dict[tuple[int, int], list[dict[str, Any]]] = defaultdict(list)
+
+    for edge_id, edge in network.directed_edges.items():
+        if not network.outgoing_options(edge_id):
+            continue
+        length = float(edge.get("length_meter") or 0.0)
+        if length < min_length_meter:
+            continue
+        from_node = network.nodes.get(edge["from_node_id"])
+        to_node = network.nodes.get(edge["to_node_id"])
+        if not from_node or not to_node:
+            continue
+        midpoint_lat = (float(from_node["lat"]) + float(to_node["lat"])) / 2.0
+        midpoint_lon = (float(from_node["lon"]) + float(to_node["lon"])) / 2.0
+        mesh_x, mesh_y = lat_lon_to_mesh(
+            lat=midpoint_lat,
+            lon=midpoint_lon,
+            origin_lat=origin_lat,
+            mesh_size_meter=mesh_size,
+        )
+        edge_weight = mesh_edge_weight(edge)
+        if edge_weight <= 0:
+            continue
+        raw_by_mesh[(mesh_x, mesh_y)].append(
+            {
+                "directed_edge_id": edge_id,
+                "raw_edge_weight": edge_weight,
+                "source_category": "mesh_uniform",
+                "mesh_id": f"mesh_{mesh_x}_{mesh_y}",
+                "mesh_x": mesh_x,
+                "mesh_y": mesh_y,
+                "mesh_size_meter": mesh_size,
+                "road_type": edge.get("road_type"),
+                "length_meter": length,
+            }
+        )
+
+    candidates: list[dict[str, Any]] = []
+    for mesh_key, items in raw_by_mesh.items():
+        raw_total = sum(item["raw_edge_weight"] for item in items)
+        if raw_total <= 0:
+            continue
+        for item in items:
+            candidates.append(
+                {
+                    **item,
+                    "weight": item["raw_edge_weight"] / raw_total,
+                    "mesh_edge_candidate_count": len(items),
+                }
+            )
+    return candidates
+
+
+def mesh_edge_weight(edge: dict[str, Any]) -> float:
+    """メッシュ内で発生 edge を選ぶための重みを返す。"""
+
+    road_type = edge.get("road_type")
+    road_weight = MESH_SOURCE_ROAD_TYPE_WEIGHTS.get(road_type, 0.2)
+    lane_weight = max(1.0, float(edge.get("lane_count_total") or 1.0))
+    speed_weight = max(0.5, float(edge.get("speed_limit_kmh") or 30.0) / 40.0)
+    length_weight = math.sqrt(max(1.0, float(edge.get("length_meter") or 1.0)))
+    return road_weight * lane_weight * speed_weight * length_weight
+
+
+def lat_lon_to_mesh(
+    *,
+    lat: float,
+    lon: float,
+    origin_lat: float,
+    mesh_size_meter: float,
+) -> tuple[int, int]:
+    """緯度経度を簡易メートル座標に変換してメッシュ番号を返す。"""
+
+    meter_per_lat = 111_320.0
+    meter_per_lon = 111_320.0 * math.cos(math.radians(origin_lat))
+    x = lon * meter_per_lon
+    y = lat * meter_per_lat
+    return math.floor(x / mesh_size_meter), math.floor(y / mesh_size_meter)
 
 
 def build_observation_upstream_source_candidates(
@@ -340,6 +456,7 @@ def build_observation_upstream_source_candidates(
                     "linked_observation_count": 0,
                     "min_upstream_distance_meter": distance,
                     "road_type": edge.get("road_type"),
+                    "length_meter": network.edge_length(edge_id),
                 },
             )
             item["weight"] += contribution

@@ -16,7 +16,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
-DEFAULT_SOURCE_DIR = REPO_ROOT / "road_database_project/output/prototype_tokyo_core_small"
+DEFAULT_SOURCE_DIR = REPO_ROOT / "private_inputs/road_db_snapshot_source"
 DEFAULT_SNAPSHOT_ROOT = PROJECT_ROOT / "data/road_db_snapshots"
 
 REQUIRED_FILES = [

@@ -12,9 +12,15 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = PROJECT_ROOT.parent
-DEFAULT_SCENARIO_PATH = REPO_ROOT / "inverse_traffic_simulator/data/current/tokyo_core_small_realdata_osm_300obs_allday.json"
+DEFAULT_SCENARIO_PATH = REPO_ROOT / "private_inputs/scenario.json"
 DEFAULT_SNAPSHOT_DIR = PROJECT_ROOT / "data/road_db_snapshots/road_db_prototype_tokyo_core_small_runtime_current"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "viewer/data/observation_alignment.json"
+
+MAJOR_ROAD_TYPES = {"motorway", "trunk", "primary", "secondary"}
+
+# 観測点単位で確認済みの暫定補正。
+# 自動スコアだけでは判定しにくいが、可視化と現在の通過量から明らかに候補edgeが妥当なものだけを入れる。
+MANUAL_OBSERVATION_EDGE_OVERRIDES: dict[str, str] = {}
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,7 +78,7 @@ def main() -> None:
         nearest_count=args.nearest_count,
         candidate_radius_meter=args.candidate_radius_meter,
     )
-    pair_diagnostics = build_near_pair_diagnostics(observations_with_candidates)
+    pair_diagnostics = build_pair_diagnostics(observations_with_candidates)
     apply_pair_constrained_matching(
         observations=observations_with_candidates,
         pairs=pair_diagnostics,
@@ -96,6 +102,7 @@ def main() -> None:
             "road_padding_meter": args.road_padding_meter,
             "candidate_radius_meter": args.candidate_radius_meter,
             "near_pair_threshold_meter": 25.0,
+            "same_directed_edge_pair_detection": True,
             "direction_conflict_angle_threshold_deg": 45.0,
             "opposite_direction_angle_threshold_deg": 135.0,
             "pair_constraint_max_candidate_distance_meter": 30.0,
@@ -340,15 +347,21 @@ def attach_nearest_candidates(
             candidate_radius_meter=candidate_radius_meter,
         )
         item = dict(obs)
+        selected_candidate = select_initial_candidate(obs, candidates)
+        nearest_distance = min((candidate["distance_meter"] for candidate in candidates), default=None)
         item["nearest_candidates"] = [without_shape_points(candidate) for candidate in candidates]
-        item["nearest_distance_meter"] = candidates[0]["distance_meter"] if candidates else None
+        item["nearest_distance_meter"] = nearest_distance
         item["alignment_status"] = classify_alignment(item["nearest_distance_meter"])
         item["usable_for_initial_matching"] = item["alignment_status"] == "near"
-        item["provisional_link"] = build_provisional_link(candidates[0]) if candidates else None
-        item["matched_link"] = build_provisional_link(candidates[0]) if candidates else None
-        item["match_method"] = "nearest" if candidates else "no_candidate"
+        item["provisional_link"] = build_provisional_link(selected_candidate) if selected_candidate else None
+        item["matched_link"] = build_provisional_link(selected_candidate) if selected_candidate else None
+        item["match_method"] = initial_match_method(candidates, selected_candidate)
         item["match_confidence"] = initial_match_confidence(item["alignment_status"])
         item["warning_flags"] = initial_warning_flags(item)
+        if candidates and selected_candidate and candidates[0]["directed_edge_id"] != selected_candidate["directed_edge_id"]:
+            add_warning_flag(item, "initial_match_adjusted")
+        if item["match_method"] == "manual_override":
+            add_warning_flag(item, "manual_match_override")
         output.append(item)
     return output
 
@@ -392,12 +405,58 @@ def nearest_edges(
                     "lon": nearest["lon"],
                 },
                 "position_ratio": round(nearest["position_ratio"], 4),
+                "single_match_score": round(score_single_candidate(edge, nearest["distance_meter"], nearest["position_ratio"]), 3),
                 "shape_points": edge["shape_points"],
             }
         )
 
     scored.sort(key=lambda item: item["distance_meter"])
     return scored[:nearest_count]
+
+
+def select_initial_candidate(obs: dict[str, Any], candidates: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """初期マッチ候補を選ぶ。最近傍が細街路の場合だけ幹線候補を優先する。"""
+
+    if not candidates:
+        return None
+    override_edge_id = MANUAL_OBSERVATION_EDGE_OVERRIDES.get(str(obs.get("point_number")))
+    if override_edge_id:
+        for candidate in candidates:
+            if candidate["directed_edge_id"] == override_edge_id:
+                return candidate
+    nearest = candidates[0]
+    nearest_type = nearest.get("road_type")
+    if nearest_type in MAJOR_ROAD_TYPES:
+        return nearest
+
+    major_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.get("road_type") in MAJOR_ROAD_TYPES
+        and candidate["distance_meter"] <= max(5.0, nearest["distance_meter"] + 3.0)
+    ]
+    if not major_candidates:
+        return nearest
+    return min(
+        major_candidates,
+        key=lambda candidate: (
+            endpoint_penalty(candidate.get("position_ratio")),
+            candidate["distance_meter"],
+            road_type_penalty(candidate.get("road_type")),
+        ),
+    )
+
+
+def initial_match_method(candidates: list[dict[str, Any]], selected_candidate: dict[str, Any] | None) -> str:
+    """初期マッチング方法名を返す。"""
+
+    if not candidates or not selected_candidate:
+        return "no_candidate"
+    if candidates[0]["directed_edge_id"] == selected_candidate["directed_edge_id"]:
+        return "nearest"
+    if selected_candidate["directed_edge_id"] in MANUAL_OBSERVATION_EDGE_OVERRIDES.values():
+        return "manual_override"
+    return "nearest_major_adjusted"
 
 
 def without_shape_points(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -454,8 +513,8 @@ def initial_warning_flags(observation: dict[str, Any]) -> list[str]:
     return []
 
 
-def build_near_pair_diagnostics(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """近接観測点ペアの方向診断を作る。"""
+def build_pair_diagnostics(observations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """同一edgeまたは近接観測点ペアの方向診断を作る。"""
 
     usable_observations = [
         obs
@@ -466,17 +525,19 @@ def build_near_pair_diagnostics(observations: list[dict[str, Any]]) -> list[dict
     pair_index = 0
     for index, left in enumerate(usable_observations):
         for right in usable_observations[index + 1:]:
-            distance_meter = haversine_meter(left["lat"], left["lon"], right["lat"], right["lon"])
-            if distance_meter > 25.0:
-                continue
-            pair_index += 1
             left_link = left["provisional_link"]
             right_link = right["provisional_link"]
+            same_directed_edge = left_link["directed_edge_id"] == right_link["directed_edge_id"]
+            distance_meter = haversine_meter(left["lat"], left["lon"], right["lat"], right["lon"])
+            is_near_pair = distance_meter <= 25.0
+            if not same_directed_edge and not is_near_pair:
+                continue
+
+            pair_index += 1
             left_bearing = left_link.get("bearing_deg")
             right_bearing = right_link.get("bearing_deg")
             diff = angle_diff_deg(left_bearing, right_bearing)
             volume_profile_relation = compare_volume_profiles(left["volume_profile"], right["volume_profile"])
-            same_directed_edge = left_link["directed_edge_id"] == right_link["directed_edge_id"]
             same_topology_edge = left_link["topology_edge_id"] == right_link["topology_edge_id"]
             is_opposite = diff is not None and diff >= 135.0
             is_conflict = same_directed_edge or (diff is not None and diff <= 45.0)
@@ -489,6 +550,7 @@ def build_near_pair_diagnostics(observations: list[dict[str, Any]]) -> list[dict
                     "right_point_number": right.get("point_number"),
                     "left_point_name": left.get("point_name"),
                     "right_point_name": right.get("point_name"),
+                    "pair_detection_reason": "same_directed_edge" if same_directed_edge else "near_distance",
                     "distance_meter": round(distance_meter, 2),
                     "left_directed_edge_id": left_link["directed_edge_id"],
                     "right_directed_edge_id": right_link["directed_edge_id"],
@@ -703,6 +765,8 @@ def score_pair_candidate(left_candidate: dict[str, Any], right_candidate: dict[s
     same_directed_edge_penalty = 1000.0 if same_directed_edge else 0.0
     weak_direction_penalty = 100.0 if direction_diff is None or direction_diff < 90.0 else 0.0
     opposite_same_topology_bonus = -20.0 if same_topology_edge and direction_diff is not None and direction_diff >= 135.0 else 0.0
+    road_penalty = road_type_penalty(left_candidate.get("road_type")) + road_type_penalty(right_candidate.get("road_type"))
+    endpoint_cost = endpoint_penalty(left_candidate.get("position_ratio")) + endpoint_penalty(right_candidate.get("position_ratio"))
     score = (
         left_candidate["distance_meter"]
         + right_candidate["distance_meter"]
@@ -710,13 +774,55 @@ def score_pair_candidate(left_candidate: dict[str, Any], right_candidate: dict[s
         + same_directed_edge_penalty
         + weak_direction_penalty
         + opposite_same_topology_bonus
+        + road_penalty
+        + endpoint_cost
     )
     return {
         "score": score,
         "direction_diff_deg": direction_diff,
         "same_directed_edge": same_directed_edge,
         "same_topology_edge": same_topology_edge,
+        "road_penalty": road_penalty,
+        "endpoint_cost": endpoint_cost,
     }
+
+
+def score_single_candidate(edge: dict[str, Any], distance_meter: float, position_ratio: float | None) -> float:
+    """単独候補の暫定スコアを返す。小さいほど観測点マッチに向く。"""
+
+    return distance_meter + road_type_penalty(edge.get("road_type")) + endpoint_penalty(position_ratio)
+
+
+def road_type_penalty(road_type: str | None) -> float:
+    """観測点マッチで避けたい道路種別のペナルティを返す。"""
+
+    penalties = {
+        "motorway": 0.0,
+        "trunk": 0.0,
+        "primary": 0.0,
+        "secondary": 1.0,
+        "tertiary": 6.0,
+        "unclassified": 14.0,
+        "residential": 18.0,
+        "service": 35.0,
+    }
+    return penalties.get(road_type or "", 20.0)
+
+
+def endpoint_penalty(position_ratio: float | None) -> float:
+    """edge端に貼られる候補を避けるためのペナルティを返す。"""
+
+    if position_ratio is None:
+        return 0.0
+    ratio = float(position_ratio)
+    edge_distance = min(ratio, 1.0 - ratio)
+    if edge_distance <= 0.002:
+        return 40.0
+    if edge_distance <= 0.02:
+        return 20.0
+    if edge_distance <= 0.05:
+        return 8.0
+    return 0.0
 
 
 def build_matched_link(candidate: dict[str, Any], edge_lookup: dict[str, dict[str, Any]]) -> dict[str, Any]:
