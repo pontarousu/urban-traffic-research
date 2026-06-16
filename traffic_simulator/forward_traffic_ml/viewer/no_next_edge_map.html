@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>No Next Edge Map</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>No Next Edge Map</h1>
+        <p class="viewer-note">公開版には <code>viewer/data/no_next_edge_map.json</code> を同梱していません。ローカルで生成した確認用データを配置して利用します。</p>
+        <div class="controls">
+          <label><input type="checkbox" id="toggleRoads" checked> 道路</label>
+          <label><input type="checkbox" id="toggleObservations" checked> 観測点</label>
+          <label><input type="checkbox" id="toggleNoNext" checked> no_next_edge</label>
+          <label>
+            source
+            <select id="sourceFilter">
+              <option value="all">all</option>
+              <option value="NW" selected>NW</option>
+              <option value="NE">NE</option>
+              <option value="SW">SW</option>
+              <option value="SE">SE</option>
+            </select>
+          </label>
+          <label>
+            final
+            <select id="finalFilter">
+              <option value="all">all</option>
+              <option value="NW">NW</option>
+              <option value="NE">NE</option>
+              <option value="SW">SW</option>
+              <option value="SE">SE</option>
+            </select>
+          </label>
+          <label>
+            road type
+            <select id="roadTypeFilter">
+              <option value="all">all</option>
+              <option value="service">service</option>
+              <option value="residential">residential</option>
+              <option value="tertiary">tertiary</option>
+              <option value="unclassified">unclassified</option>
+              <option value="primary">primary</option>
+              <option value="secondary">secondary</option>
+            </select>
+          </label>
+          <label>
+            min weight
+            <input type="number" id="minWeight" min="0" step="10" value="0">
+          </label>
+        </div>
+        <div class="view-actions">
+          <button type="button" id="resetView">Reset view</button>
+          <span id="zoomReadout">1.00x</span>
+        </div>
+        <div class="legend">
+          <div><span class="chip profile-morning"></span>NW source</div>
+          <div><span class="chip internal-major"></span>NE source</div>
+          <div><span class="chip boundary-minor"></span>SW source</div>
+          <div><span class="chip under"></span>SE source</div>
+          <div><span class="chip internal-minor"></span>道路</div>
+        </div>
+        <pre id="summary"></pre>
+      </aside>
+      <main class="map-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+    </div>
+    <script src="./no_next_edge_map.js"></script>
+  </body>
+</html>

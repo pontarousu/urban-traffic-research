@@ -134,6 +134,7 @@ class RoadDbNetwork:
         theta: dict[str, float],
         rng: random.Random,
         epsilon: float,
+        no_outgoing_penalty: float = 0.0,
     ) -> tuple[str | None, float | None]:
         """softmax + epsilon で次の directed edge を選ぶ。"""
 
@@ -145,6 +146,7 @@ class RoadDbNetwork:
         node_id = incoming["to_node_id"]
         scores = [
             theta.get(branch_key(node_id, incoming_edge_id, option["outgoing_directed_edge_id"]), 0.0)
+            + structural_penalty_for_outgoing(self, option["outgoing_directed_edge_id"], no_outgoing_penalty)
             for option in options
         ]
         max_score = max(scores)
@@ -165,6 +167,20 @@ class RoadDbNetwork:
             if current >= threshold:
                 return option["outgoing_directed_edge_id"], probability
         return options[-1]["outgoing_directed_edge_id"], probabilities[-1]
+
+
+def structural_penalty_for_outgoing(
+    network: RoadDbNetwork,
+    outgoing_edge_id: str,
+    no_outgoing_penalty: float,
+) -> float:
+    """次に進めない outgoing edge に対する固定ペナルティを返す。"""
+
+    if no_outgoing_penalty == 0.0:
+        return 0.0
+    if network.outgoing_options(outgoing_edge_id):
+        return 0.0
+    return no_outgoing_penalty
 
 
 def branch_key(node_id: str, incoming_edge_id: str, outgoing_edge_id: str) -> str:

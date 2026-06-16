@@ -13,11 +13,10 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = PROJECT_ROOT.parent
-
-DEFAULT_SCENARIO_PATH = REPO_ROOT / "private_inputs/scenario.json"
-DEFAULT_TRAFFIC_PATH = REPO_ROOT / "private_inputs/traffic_volume.json"
-DEFAULT_LOCATION_PATH = REPO_ROOT / "private_inputs/observation_locations.csv"
+# 公開版では実データを同梱しない。利用時は権利上問題のない入力を明示指定する。
+DEFAULT_SCENARIO_PATH = PROJECT_ROOT / "data/private/scenario_with_observations.json"
+DEFAULT_TRAFFIC_PATH = PROJECT_ROOT / "data/private/traffic_volume.json"
+DEFAULT_LOCATION_PATH = PROJECT_ROOT / "data/private/observation_locations.csv"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data/processed/small_forward_dataset.json"
 
 

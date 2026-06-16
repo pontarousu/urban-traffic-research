@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-active-vehicles", type=int, default=1200)
     parser.add_argument("--max-vehicle-age-sec", type=int, default=1800)
     parser.add_argument("--epsilon", type=float, default=0.2)
+    parser.add_argument("--no-outgoing-penalty", type=float, default=0.0)
     parser.add_argument("--spawn-timing", choices=["batch", "distributed"], default="distributed")
     parser.add_argument("--vehicle-packet-size", type=int, default=1)
     parser.add_argument("--source-mode", choices=["major", "matched_edges", "mixed", "observation_upstream", "mesh_uniform"], default="observation_upstream")
@@ -131,6 +132,7 @@ def main() -> None:
             max_active_vehicles=args.max_active_vehicles,
             max_vehicle_age_sec=args.max_vehicle_age_sec,
             epsilon=args.epsilon,
+            no_outgoing_penalty=args.no_outgoing_penalty,
             spawn_timing=args.spawn_timing,
             vehicle_packet_size=args.vehicle_packet_size,
             theta=policy.theta,
@@ -199,6 +201,7 @@ def main() -> None:
                 max_active_vehicles=args.max_active_vehicles,
                 max_vehicle_age_sec=args.max_vehicle_age_sec,
                 epsilon=args.epsilon,
+                no_outgoing_penalty=args.no_outgoing_penalty,
                 spawn_timing=args.spawn_timing,
                 vehicle_packet_size=args.vehicle_packet_size,
             )
@@ -212,6 +215,7 @@ def main() -> None:
             "iteration_runtime_sec": round(iteration_runtime_sec, 3),
             "simulation_runtime_sec": round(simulation_runtime_sec, 3),
             "feedback_runtime_sec": round(feedback_runtime_sec, 3),
+            "no_outgoing_penalty": args.no_outgoing_penalty,
             "mae": comparison_summary["mae"],
             "rmse": comparison_summary["rmse"],
             "bias": comparison_summary["bias"],
@@ -237,6 +241,11 @@ def main() -> None:
             "observation_event_count": result["summary"]["observation_event_count"],
             "observation_event_weight_sum": result["summary"]["observation_event_weight_sum"],
             "branch_event_count": result["summary"]["branch_event_count"],
+            "final_no_next_edge_weight": result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+            "final_no_next_edge_weight_ratio": ratio(
+                result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+                result["summary"]["spawned_count"],
+            ),
             **feedback["summary"],
             **theta_update_summary,
             **eval_summary,
@@ -267,6 +276,7 @@ def run_evaluation(
     max_active_vehicles: int,
     max_vehicle_age_sec: int,
     epsilon: float,
+    no_outgoing_penalty: float,
     spawn_timing: str,
     vehicle_packet_size: int,
 ) -> dict[str, Any]:
@@ -287,6 +297,7 @@ def run_evaluation(
         max_active_vehicles=max_active_vehicles,
         max_vehicle_age_sec=max_vehicle_age_sec,
         epsilon=epsilon,
+        no_outgoing_penalty=no_outgoing_penalty,
         spawn_timing=spawn_timing,
         vehicle_packet_size=vehicle_packet_size,
         theta=theta,
@@ -334,6 +345,11 @@ def run_evaluation(
         "eval_observation_event_count": result["summary"]["observation_event_count"],
         "eval_observation_event_weight_sum": result["summary"]["observation_event_weight_sum"],
         "eval_branch_event_count": result["summary"]["branch_event_count"],
+        "eval_final_no_next_edge_weight": result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+        "eval_final_no_next_edge_weight_ratio": ratio(
+            result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+            result["summary"]["spawned_count"],
+        ),
     }
 
 

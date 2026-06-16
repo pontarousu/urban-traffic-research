@@ -40,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-active-vehicles", type=int, default=1200)
     parser.add_argument("--max-vehicle-age-sec", type=int, default=1800)
     parser.add_argument("--epsilon", type=float, default=0.2)
+    parser.add_argument("--no-outgoing-penalty", type=float, default=0.0)
     parser.add_argument("--spawn-timing", choices=["batch", "distributed"], default="distributed")
     parser.add_argument("--vehicle-packet-size", type=int, default=1)
     parser.add_argument("--source-mode", choices=["major", "matched_edges", "mixed", "observation_upstream", "mesh_uniform"], default="mixed")
@@ -153,6 +154,7 @@ def main() -> None:
         max_active_vehicles=args.max_active_vehicles,
         max_vehicle_age_sec=args.max_vehicle_age_sec,
         epsilon=args.epsilon,
+        no_outgoing_penalty=args.no_outgoing_penalty,
         spawn_timing=args.spawn_timing,
         vehicle_packet_size=args.vehicle_packet_size,
     )

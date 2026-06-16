@@ -119,14 +119,17 @@ simulate → compare → update parameters → simulate again
 | `road_db_forward_simulator.py` | 道路DB directed edgeベースの順方向シミュレーション | 作成途中の道路DBベース実験です |
 | `road_db_theta_policy.py` | 道路DB版の分岐スコア `theta` を管理する | directed edgeベースの分岐補正用です |
 | `road_db_feedback_trainer.py` | 道路DB版の車両traceから分岐更新量を作る | trace-basedな補正実験です |
+| `road_db_rl_trainer.py` | reward / baseline / advantage に基づく最小RL更新量を作る | 実験結果本体は公開版に含めていません |
 | `run_road_db_simulation.py` | 道路DBベースの順方向シミュレーションを実行する | 結果CSV/JSONは公開版に含めていません |
 | `run_road_db_training.py` | 道路DBベースの反復補正実験を実行する | 学習結果は公開版に含めていません |
+| `run_road_db_rl_training.py` | 道路DBベースの最小RL学習を実行する | 入力データ・学習結果は公開版に含めていません |
 | `compare_road_db_counts.py` | 道路DBシミュレーション結果と観測値を比較する | 比較結果CSV/JSONは公開版に含めていません |
 | `export_visualization.py` | 診断ビューア用JSONを生成する | 生成される `viewer/data/diagnostics.json` は公開版に含めていません |
 | `export_observation_alignment.py` | 観測点と道路DB geometry の対応確認用JSONを出力する | 観測点位置情報に由来するため、生成済みJSONは公開版に含めていません |
 | `export_road_filter_variants.py` | 道路選択条件の違いを比較する可視化JSONを出力する | 生成済みJSONは公開版に含めていません |
 | `export_source_variants.py` | 車両発生位置パターンを比較する可視化JSONを出力する | 生成済みJSONは公開版に含めていません |
 | `export_spawn_observation_points.py` | 観測点と車両発生位置を同じ地図で確認するJSONを出力する | 生成済みJSONは公開版に含めていません |
+| `export_no_next_edge_map.py` | no_next_edge 終了位置の分布を確認するJSONを出力する | 観測点対応JSONと実験結果CSVから作るため、生成済みJSONは公開版に含めていません |
 
 ### 7.2 `viewer/`
 
@@ -140,6 +143,7 @@ simulate → compare → update parameters → simulate again
 | `source_variants.html`, `source_variants.js` | 車両発生位置パターンの比較 | `viewer/data/source_variants.json` |
 | `spawn_observation_points.html`, `spawn_observation_points.js` | 観測点と車両発生位置の対応確認 | `viewer/data/spawn_observation_points.json` |
 | `conflict_volume_profiles.html`, `conflict_volume_profiles.js`, `conflict_volume_profiles.css` | 近接観測点ペアの交通量プロファイル確認 | `viewer/data/observation_alignment.json` などから派生した診断データ |
+| `no_next_edge_map.html`, `no_next_edge_map.js` | no_next_edge 終了位置の分布確認 | `viewer/data/no_next_edge_map.json` |
 
 公開版では、これらの入力JSONを含めていません。理由は、観測点位置情報やそれに由来する派生データを含む可能性があるためです。そのため、ビューア本体は公開していますが、実データを表示するには、利用規約に従って入力データを取得し、対応する `src/export_*.py` を実行してJSONを生成する必要があります。
 

@@ -249,6 +249,7 @@ def run_road_db_simulation(
     spawn_timing: str = "distributed",
     vehicle_packet_size: int = 1,
     theta: dict[str, float] | None = None,
+    no_outgoing_penalty: float = 0.0,
 ) -> dict[str, Any]:
     """road DB ベースの最小シミュレーションを実行する。"""
 
@@ -282,6 +283,7 @@ def run_road_db_simulation(
     spawn_stats_by_edge: dict[str, int] = defaultdict(int)
     spawn_stats_by_mesh: dict[str, int] = defaultdict(int)
     final_status_counts: dict[str, int] = defaultdict(int)
+    final_status_weight_counts: dict[str, int] = defaultdict(int)
 
     for elapsed_sec in range(0, total_seconds, time_step_sec):
         current_time_sec = elapsed_sec
@@ -311,6 +313,7 @@ def run_road_db_simulation(
             if current_time_sec - vehicle.birth_time_sec > max_vehicle_age_sec:
                 completed_traces.append(vehicle_to_trace(vehicle, "max_age", current_time_sec))
                 final_status_counts["max_age"] += 1
+                final_status_weight_counts["max_age"] += vehicle.weight
                 continue
             final_status = move_vehicle_one_step(
                 vehicle=vehicle,
@@ -323,10 +326,12 @@ def run_road_db_simulation(
                 rng=rng,
                 theta=theta,
                 epsilon=epsilon,
+                no_outgoing_penalty=no_outgoing_penalty,
             )
             if final_status:
                 completed_traces.append(vehicle_to_trace(vehicle, final_status, current_time_sec))
                 final_status_counts[final_status] += 1
+                final_status_weight_counts[final_status] += vehicle.weight
             else:
                 next_active.append(vehicle)
         active = next_active
@@ -338,6 +343,7 @@ def run_road_db_simulation(
     for vehicle in active:
         completed_traces.append(vehicle_to_trace(vehicle, "simulation_end", total_seconds))
         final_status_counts["simulation_end"] += 1
+        final_status_weight_counts["simulation_end"] += vehicle.weight
 
     return {
         "counts": counts,
@@ -350,6 +356,7 @@ def run_road_db_simulation(
             "max_spawn_per_bin": max_spawn_per_bin,
             "max_active_vehicles": max_active_vehicles,
             "vehicle_packet_size": max(1, int(vehicle_packet_size)),
+            "no_outgoing_penalty": no_outgoing_penalty,
             "spawn_timing": spawn_timing,
             "scheduled_spawn_events": len(spawn_schedule),
             "scheduled_spawn_count": total_scheduled_spawn,
@@ -371,6 +378,7 @@ def run_road_db_simulation(
             ),
             "branch_event_count": sum(len(trace["branch_trace"]) for trace in completed_traces),
             "final_status_counts": dict(final_status_counts),
+            "final_status_weight_counts": dict(final_status_weight_counts),
             "spawn_stats_by_category": dict(spawn_stats_by_category),
             "spawn_stats_by_mesh": dict(spawn_stats_by_mesh),
             "top_spawn_edges": sorted(
@@ -399,6 +407,7 @@ def move_vehicle_one_step(
     rng: random.Random,
     theta: dict[str, float],
     epsilon: float,
+    no_outgoing_penalty: float,
 ) -> str | None:
     """1台の車両を1 timestep 進める。終了した場合は終了理由を返す。"""
 
@@ -425,7 +434,13 @@ def move_vehicle_one_step(
         if vehicle.position_meter < edge_length:
             return None
 
-        next_edge_id, probability = network.choose_next_edge(edge_id, theta, rng, epsilon)
+        next_edge_id, probability = network.choose_next_edge(
+            edge_id,
+            theta,
+            rng,
+            epsilon,
+            no_outgoing_penalty=no_outgoing_penalty,
+        )
         if not next_edge_id:
             return "no_next_edge"
 

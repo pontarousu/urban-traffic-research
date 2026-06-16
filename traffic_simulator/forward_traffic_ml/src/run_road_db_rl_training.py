@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-active-vehicles", type=int, default=15000)
     parser.add_argument("--max-vehicle-age-sec", type=int, default=2400)
     parser.add_argument("--epsilon", type=float, default=0.2)
+    parser.add_argument("--no-outgoing-penalty", type=float, default=0.0)
     parser.add_argument("--spawn-timing", choices=["batch", "distributed"], default="distributed")
     parser.add_argument("--vehicle-packet-size", type=int, default=5)
     parser.add_argument("--source-mode", choices=["major", "matched_edges", "mixed", "observation_upstream", "mesh_uniform"], default="mesh_uniform")
@@ -76,8 +77,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--write-vehicle-traces", action="store_true")
     parser.add_argument("--write-rl-diagnostics", action="store_true")
     parser.add_argument("--rl-diagnostics-limit", type=int, default=5000)
-    parser.add_argument("--baseline-mode", choices=["global", "observation", "mixed"], default="global")
+    parser.add_argument("--baseline-mode", choices=["global", "observation", "mixed", "mixed_fixed", "mixed_auto"], default="global")
     parser.add_argument("--mixed-baseline-global-weight", type=float, default=0.3)
+    parser.add_argument("--baseline-lambda", type=float, default=0.25)
+    parser.add_argument("--baseline-lambda-initial", type=float, default=0.0)
+    parser.add_argument("--baseline-lambda-smoothing", type=float, default=0.2)
+    parser.add_argument("--baseline-lambda-max-step", type=float, default=0.1)
+    parser.add_argument("--baseline-min-samples", type=int, default=100)
     return parser.parse_args()
 
 
@@ -127,6 +133,7 @@ def main() -> None:
 
     metric_rows: list[dict[str, Any]] = []
     reward_start_min = args.start_min + args.warmup_min
+    current_mixed_lambda = min(1.0, max(0.0, args.baseline_lambda_initial))
     for iteration in range(1, args.iterations + 1):
         iteration_started = time.perf_counter()
         seed = args.base_seed + iteration
@@ -147,6 +154,7 @@ def main() -> None:
             max_active_vehicles=args.max_active_vehicles,
             max_vehicle_age_sec=args.max_vehicle_age_sec,
             epsilon=args.epsilon,
+            no_outgoing_penalty=args.no_outgoing_penalty,
             spawn_timing=args.spawn_timing,
             vehicle_packet_size=args.vehicle_packet_size,
             theta=policy.theta,
@@ -164,6 +172,11 @@ def main() -> None:
         warmup_summary = summarize_after_min(comparison_rows, reward_start_min)
 
         feedback_started = time.perf_counter()
+        mixed_lambda_for_iteration = baseline_lambda_for_iteration(
+            baseline_mode=args.baseline_mode,
+            fixed_lambda=args.baseline_lambda,
+            current_auto_lambda=current_mixed_lambda,
+        )
         feedback = compute_rl_feedback(
             network=network,
             comparison_rows=comparison_rows,
@@ -178,9 +191,14 @@ def main() -> None:
             max_backtrace_distance_meter=args.max_backtrace_distance_meter,
             backtrace_decay_meter=args.backtrace_decay_meter,
             min_backtrace_weight=args.min_backtrace_weight,
+            no_outgoing_penalty=args.no_outgoing_penalty,
             diagnostics_limit=args.rl_diagnostics_limit if args.write_rl_diagnostics else 0,
             baseline_mode=args.baseline_mode,
             mixed_baseline_global_weight=args.mixed_baseline_global_weight,
+            mixed_baseline_lambda=mixed_lambda_for_iteration,
+            mixed_baseline_lambda_smoothing=args.baseline_lambda_smoothing,
+            mixed_baseline_lambda_max_step=args.baseline_lambda_max_step,
+            mixed_baseline_min_samples=args.baseline_min_samples,
         )
         if args.write_rl_diagnostics:
             write_rl_diagnostics(feedback["diagnostics"], iteration_dir / "rl_diagnostics.csv")
@@ -212,6 +230,7 @@ def main() -> None:
                 max_active_vehicles=args.max_active_vehicles,
                 max_vehicle_age_sec=args.max_vehicle_age_sec,
                 epsilon=args.epsilon,
+                no_outgoing_penalty=args.no_outgoing_penalty,
                 spawn_timing=args.spawn_timing,
                 vehicle_packet_size=args.vehicle_packet_size,
                 write_vehicle_traces=args.write_vehicle_traces,
@@ -230,6 +249,12 @@ def main() -> None:
             "boundary_excluded_count": len(boundary_filter["excluded"]),
             "baseline_mode": args.baseline_mode,
             "mixed_baseline_global_weight": args.mixed_baseline_global_weight,
+            "baseline_lambda": mixed_lambda_for_iteration,
+            "baseline_lambda_initial": args.baseline_lambda_initial,
+            "baseline_lambda_smoothing": args.baseline_lambda_smoothing,
+            "baseline_lambda_max_step": args.baseline_lambda_max_step,
+            "baseline_min_samples": args.baseline_min_samples,
+            "no_outgoing_penalty": args.no_outgoing_penalty,
             "mae": comparison_summary["mae"],
             "rmse": comparison_summary["rmse"],
             "bias": comparison_summary["bias"],
@@ -257,6 +282,11 @@ def main() -> None:
             "observation_event_count": result["summary"]["observation_event_count"],
             "observation_event_weight_sum": result["summary"]["observation_event_weight_sum"],
             "branch_event_count": result["summary"]["branch_event_count"],
+            "final_no_next_edge_weight": result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+            "final_no_next_edge_weight_ratio": ratio(
+                result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+                result["summary"]["spawned_count"],
+            ),
             **feedback["summary"],
             **theta_update_summary,
             **eval_summary,
@@ -264,6 +294,8 @@ def main() -> None:
         metric_rows.append(metric_row)
         write_iteration_metrics(metric_rows, args.output_dir / "iteration_metrics.csv")
         print(json.dumps(metric_row, ensure_ascii=False, indent=2))
+        if args.baseline_mode == "mixed_auto":
+            current_mixed_lambda = float(feedback["summary"]["rl_mixed_baseline_lambda_next"])
 
     policy.save(args.output_dir / "theta_final.json")
     write_training_config(args, args.output_dir / "training_config.json")
@@ -318,6 +350,7 @@ def run_rl_evaluation(
     max_active_vehicles: int,
     max_vehicle_age_sec: int,
     epsilon: float,
+    no_outgoing_penalty: float,
     spawn_timing: str,
     vehicle_packet_size: int,
     write_vehicle_traces: bool,
@@ -338,6 +371,7 @@ def run_rl_evaluation(
         max_active_vehicles=max_active_vehicles,
         max_vehicle_age_sec=max_vehicle_age_sec,
         epsilon=epsilon,
+        no_outgoing_penalty=no_outgoing_penalty,
         spawn_timing=spawn_timing,
         vehicle_packet_size=vehicle_packet_size,
         theta=theta,
@@ -379,6 +413,11 @@ def run_rl_evaluation(
         "eval_observation_event_count": result["summary"]["observation_event_count"],
         "eval_observation_event_weight_sum": result["summary"]["observation_event_weight_sum"],
         "eval_branch_event_count": result["summary"]["branch_event_count"],
+        "eval_final_no_next_edge_weight": result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+        "eval_final_no_next_edge_weight_ratio": ratio(
+            result["summary"]["final_status_weight_counts"].get("no_next_edge", 0),
+            result["summary"]["spawned_count"],
+        ),
     }
 
 
@@ -480,6 +519,21 @@ def ratio(numerator: float | int | None, denominator: float | int | None) -> flo
     if numerator is None:
         return None
     return float(numerator) / float(denominator)
+
+
+def baseline_lambda_for_iteration(
+    *,
+    baseline_mode: str,
+    fixed_lambda: float,
+    current_auto_lambda: float,
+) -> float:
+    """baseline mode に応じてその iteration で使う lambda を返す。"""
+
+    if baseline_mode == "mixed_auto":
+        return min(1.0, max(0.0, current_auto_lambda))
+    if baseline_mode == "mixed_fixed":
+        return min(1.0, max(0.0, fixed_lambda))
+    return min(1.0, max(0.0, fixed_lambda))
 
 
 def write_boundary_filter_summary(boundary_filter: dict[str, Any], path: Path) -> None:

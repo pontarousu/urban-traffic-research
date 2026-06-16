@@ -11,15 +11,17 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = PROJECT_ROOT.parent
-DEFAULT_SCENARIO_PATH = REPO_ROOT / "private_inputs/scenario.json"
-DEFAULT_SNAPSHOT_DIR = PROJECT_ROOT / "data/road_db_snapshots/road_db_prototype_tokyo_core_small_runtime_current"
+# 公開版では実データを同梱しない。利用時は権利上問題のない入力を明示指定する。
+DEFAULT_SCENARIO_PATH = PROJECT_ROOT / "data/private/scenario_with_observations.json"
+DEFAULT_SNAPSHOT_DIR = PROJECT_ROOT / "data/private/road_db_snapshot"
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "viewer/data/observation_alignment.json"
 
 MAJOR_ROAD_TYPES = {"motorway", "trunk", "primary", "secondary"}
 
 # 観測点単位で確認済みの暫定補正。
 # 自動スコアだけでは判定しにくいが、可視化と現在の通過量から明らかに候補edgeが妥当なものだけを入れる。
+# 公開版では dataset-specific な手動補正を空にする。
+# ローカル実験で必要な場合は、権利上問題のない観測点IDとedge IDを利用者側で追加する。
 MANUAL_OBSERVATION_EDGE_OVERRIDES: dict[str, str] = {}
 
 
